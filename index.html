@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shooting Game</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #0b0f1a; color: #fff; font-family: system-ui, sans-serif; }
+    .wrap { display: grid; place-items: center; min-height: 100vh; gap: 12px; }
+    canvas { background: #0f1525; border: 1px solid #1f2a44; border-radius: 12px; }
+    .hud { display: flex; gap: 16px; font-size: 14px; opacity: 0.8; }
+    .btn { padding: 8px 12px; background: #4ade80; color: #0b0f1a; border: none; border-radius: 999px; cursor: pointer; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <div id="score">Score: 0</div>
+      <div id="lives">Lives: 3</div>
+      <div>Move: ← → / Shoot: Space</div>
+    </div>
+    <canvas id="game" width="480" height="640"></canvas>
+    <button class="btn" id="restart">Restart</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const restartBtn = document.getElementById('restart');
+
+    const state = {
+      player: { x: 220, y: 560, w: 40, h: 20, speed: 5 },
+      bullets: [],
+      enemies: [],
+      keys: {},
+      score: 0,
+      lives: 3,
+      tick: 0,
+      running: true,
+    };
+
+    function reset() {
+      state.player.x = 220;
+      state.bullets = [];
+      state.enemies = [];
+      state.score = 0;
+      state.lives = 3;
+      state.tick = 0;
+      state.running = true;
+      updateHUD();
+    }
+
+    function updateHUD() {
+      scoreEl.textContent = `Score: ${state.score}`;
+      livesEl.textContent = `Lives: ${state.lives}`;
+    }
+
+    function spawnEnemy() {
+      const size = 24 + Math.random() * 16;
+      state.enemies.push({
+        x: Math.random() * (canvas.width - size),
+        y: -size,
+        w: size,
+        h: size,
+        speed: 1.5 + Math.random() * 2.5,
+      });
+    }
+
+    function shoot() {
+      state.bullets.push({ x: state.player.x + state.player.w/2 - 2, y: state.player.y, w: 4, h: 12, speed: 7 });
+    }
+
+    function collide(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function update() {
+      if (!state.running) return;
+      state.tick++;
+
+      if (state.keys['ArrowLeft']) state.player.x -= state.player.speed;
+      if (state.keys['ArrowRight']) state.player.x += state.player.speed;
+      state.player.x = Math.max(0, Math.min(canvas.width - state.player.w, state.player.x));
+
+      state.bullets.forEach(b => b.y -= b.speed);
+      state.bullets = state.bullets.filter(b => b.y + b.h > 0);
+
+      state.enemies.forEach(e => e.y += e.speed);
+      state.enemies = state.enemies.filter(e => e.y < canvas.height + e.h);
+
+      if (state.tick % 40 === 0) spawnEnemy();
+
+      // bullets vs enemies
+      state.bullets.forEach((b, bi) => {
+        state.enemies.forEach((e, ei) => {
+          if (collide(b, e)) {
+            state.bullets[bi].hit = true;
+            state.enemies[ei].hit = true;
+            state.score += 10;
+          }
+        });
+      });
+      state.bullets = state.bullets.filter(b => !b.hit);
+      state.enemies = state.enemies.filter(e => !e.hit);
+
+      // enemies vs player
+      state.enemies.forEach((e) => {
+        if (collide(e, state.player)) {
+          e.hit = true;
+          state.lives -= 1;
+          if (state.lives <= 0) state.running = false;
+        }
+      });
+      state.enemies = state.enemies.filter(e => !e.hit);
+
+      updateHUD();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // player
+      ctx.fillStyle = '#4ade80';
+      ctx.fillRect(state.player.x, state.player.y, state.player.w, state.player.h);
+      ctx.fillRect(state.player.x + 12, state.player.y - 8, 16, 8);
+
+      // bullets
+      ctx.fillStyle = '#60a5fa';
+      state.bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+      // enemies
+      ctx.fillStyle = '#f87171';
+      state.enemies.forEach(e => ctx.fillRect(e.x, e.y, e.w, e.h));
+
+      if (!state.running) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Game Over', 170, 300);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      state.keys[e.key] = true;
+      if (e.key === ' ') shoot();
+    });
+    window.addEventListener('keyup', (e) => state.keys[e.key] = false);
+    restartBtn.addEventListener('click', reset);
+
+    reset();
+    loop();
+  </script>
+</body>
+</html>
