@@ -20,7 +20,10 @@
       <div>Move: ← → / Shoot: Space</div>
     </div>
     <canvas id="game" width="720" height="900"></canvas>
-    <button class="btn" id="restart">Restart</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="restart">Restart</button>
+      <button class="btn" id="bgm">BGM: ON</button>
+    </div>
   </div>
 
   <script>
@@ -29,6 +32,7 @@
     const scoreEl = document.getElementById('score');
     const livesEl = document.getElementById('lives');
     const restartBtn = document.getElementById('restart');
+    const bgmBtn = document.getElementById('bgm');
 
     const state = {
       player: { x: 330, y: 780, w: 50, h: 30, speed: 6 },
@@ -70,6 +74,29 @@
 
     // simple SFX
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let bgmOn = true;
+    let bgmOsc, bgmGain;
+
+    function startBGM() {
+      if (bgmOsc) return;
+      bgmOsc = audioCtx.createOscillator();
+      bgmGain = audioCtx.createGain();
+      bgmOsc.type = 'sine';
+      bgmOsc.frequency.value = 120;
+      bgmGain.gain.value = 0.03;
+      bgmOsc.connect(bgmGain).connect(audioCtx.destination);
+      bgmOsc.start();
+    }
+
+    function stopBGM() {
+      if (!bgmOsc) return;
+      bgmOsc.stop();
+      bgmOsc.disconnect();
+      bgmGain.disconnect();
+      bgmOsc = null;
+      bgmGain = null;
+    }
+
     function playLaser() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -208,12 +235,22 @@
 
     window.addEventListener('keydown', (e) => {
       state.keys[e.key] = true;
-      if (e.key === ' ') shoot();
+      if (e.key === ' ') {
+        shoot();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      }
     });
     window.addEventListener('keyup', (e) => state.keys[e.key] = false);
     restartBtn.addEventListener('click', reset);
+    bgmBtn.addEventListener('click', () => {
+      bgmOn = !bgmOn;
+      bgmBtn.textContent = `BGM: ${bgmOn ? 'ON' : 'OFF'}`;
+      if (bgmOn) startBGM(); else stopBGM();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    });
 
     reset();
+    startBGM();
     loop();
   </script>
 </body>
