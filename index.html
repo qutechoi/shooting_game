@@ -70,6 +70,19 @@
 
     // simple SFX
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playLaser() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    }
+
     function playBeep(freq, duration = 0.08) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -83,7 +96,7 @@
 
     function shoot() {
       state.bullets.push({ x: state.player.x + state.player.w/2 - 2, y: state.player.y - 6, w: 4, h: 14, speed: 9 });
-      playBeep(880);
+      playLaser();
     }
 
     function collide(a, b) {
@@ -161,9 +174,22 @@
       ctx.fillStyle = '#60a5fa';
       state.bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
-      // enemies
-      ctx.fillStyle = '#f87171';
-      state.enemies.forEach(e => ctx.fillRect(e.x, e.y, e.w, e.h));
+      // enemies (plane)
+      state.enemies.forEach(e => {
+        ctx.save();
+        ctx.translate(e.x + e.w/2, e.y + e.h/2);
+        ctx.fillStyle = '#f87171';
+        ctx.beginPath();
+        ctx.moveTo(0, 18);
+        ctx.lineTo(16, -18);
+        ctx.lineTo(0, -10);
+        ctx.lineTo(-16, -18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fb7185';
+        ctx.fillRect(-26, -8, 52, 6);
+        ctx.restore();
+      });
 
       if (!state.running) {
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
