@@ -19,7 +19,7 @@
       <div id="lives">Lives: 3</div>
       <div>Move: ← → / Shoot: Space</div>
     </div>
-    <canvas id="game" width="480" height="640"></canvas>
+    <canvas id="game" width="720" height="900"></canvas>
     <button class="btn" id="restart">Restart</button>
   </div>
 
@@ -31,7 +31,7 @@
     const restartBtn = document.getElementById('restart');
 
     const state = {
-      player: { x: 220, y: 560, w: 40, h: 20, speed: 5 },
+      player: { x: 330, y: 780, w: 50, h: 30, speed: 6 },
       bullets: [],
       enemies: [],
       keys: {},
@@ -42,7 +42,7 @@
     };
 
     function reset() {
-      state.player.x = 220;
+      state.player.x = 330;
       state.bullets = [];
       state.enemies = [];
       state.score = 0;
@@ -68,8 +68,22 @@
       });
     }
 
+    // simple SFX
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, duration = 0.08) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.08;
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
     function shoot() {
-      state.bullets.push({ x: state.player.x + state.player.w/2 - 2, y: state.player.y, w: 4, h: 12, speed: 7 });
+      state.bullets.push({ x: state.player.x + state.player.w/2 - 2, y: state.player.y - 6, w: 4, h: 14, speed: 9 });
+      playBeep(880);
     }
 
     function collide(a, b) {
@@ -99,6 +113,7 @@
             state.bullets[bi].hit = true;
             state.enemies[ei].hit = true;
             state.score += 10;
+            playBeep(220, 0.12);
           }
         });
       });
@@ -110,6 +125,7 @@
         if (collide(e, state.player)) {
           e.hit = true;
           state.lives -= 1;
+          playBeep(120, 0.2);
           if (state.lives <= 0) state.running = false;
         }
       });
@@ -121,10 +137,25 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // player
+      // player (simple plane)
+      const p = state.player;
+      ctx.save();
+      ctx.translate(p.x + p.w/2, p.y + p.h/2);
       ctx.fillStyle = '#4ade80';
-      ctx.fillRect(state.player.x, state.player.y, state.player.w, state.player.h);
-      ctx.fillRect(state.player.x + 12, state.player.y - 8, 16, 8);
+      ctx.beginPath();
+      ctx.moveTo(0, -22); // nose
+      ctx.lineTo(18, 18);
+      ctx.lineTo(0, 10);
+      ctx.lineTo(-18, 18);
+      ctx.closePath();
+      ctx.fill();
+      // wings
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(-32, 6, 64, 6);
+      // cockpit
+      ctx.fillStyle = '#60a5fa';
+      ctx.fillRect(-6, -10, 12, 10);
+      ctx.restore();
 
       // bullets
       ctx.fillStyle = '#60a5fa';
